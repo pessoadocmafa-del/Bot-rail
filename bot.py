@@ -79,7 +79,8 @@ async def pedirid(interaction: discord.Interaction):
     }
 
     try:
-        await interaction.user.edit(nick=f"{interaction.user.name} | {numero_id}")
+        nome_atual = interaction.user.display_name
+        await interaction.user.edit(nick=f"{numero_id} | {nome_atual}")
 
         embed = discord.Embed(
             title="✅ ID gerado com sucesso!",
@@ -127,5 +128,23 @@ async def resetid(interaction: discord.Interaction, usuario: discord.Member):
             "Sem permissão para alterar este usuário",
             ephemeral=True
         )
+        @bot.tree.command(name="anuncio", description="Envia um anúncio em embed")
+@app_commands.describe(
+    titulo="Título do anúncio",
+    mensagem="Conteúdo do anúncio"
+)
+async def anuncio(
+    interaction: discord.Interaction,
+    titulo: str,
+    mensagem: str
+):
+
+    embed = discord.Embed(
+        title=titulo,
+        description=mensagem,
+        color=discord.Color.blue()
+    )
+
+    await interaction.response.send_message(embed=embed)
 
 bot.run(TOKEN)
