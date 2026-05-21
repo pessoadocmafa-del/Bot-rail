@@ -28,18 +28,8 @@ user_ids = {}
 def tem_cargo_permitido(interaction: discord.Interaction):
     return any(role.id in CARGOS_PERMITIDOS for role in interaction.user.roles)
 
-async def verificar_horario():
-    await bot.wait_until_ready()
-    while True:
-        hora = datetime.datetime.now().hour
-        if hora < 11 or hora >= 23:
-            await bot.close()
-            break
-        await asyncio.sleep(60)
-
 class MyBot(commands.Bot):
     async def setup_hook(self):
-        self.loop.create_task(verificar_horario())
         await self.tree.sync()
 
 bot = MyBot(command_prefix="!", intents=intents)
@@ -48,14 +38,16 @@ bot = MyBot(command_prefix="!", intents=intents)
 async def on_ready():
     print(f"Logado como {bot.user}")
 
-@bot.tree.command(name="pedirid")
+@bot.tree.command(
+    name="pedirid",
+    description="Gera um ID para o jogador"
+)
 async def pedirid(interaction: discord.Interaction):
 
     uid = interaction.user.id
-    agora = datetime.datetime.now()
 
     if uid in user_ids:
-        old_id = user_ids[uid]["id"]
+        old_id = user_ids[uid]
 
         embed = discord.Embed(
             title="❌ Erro na geração",
@@ -67,26 +59,38 @@ async def pedirid(interaction: discord.Interaction):
             color=discord.Color.red()
         )
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True
+        )
         return
 
     numero_id = random.randint(1000, 9999)
 
-    user_ids[uid] = {
-        "id": numero_id,
-        "data": agora.strftime("%d/%m"),
-        "hora": agora.strftime("%H:%M")
-    }
+    while numero_id in user_ids.values():
+        numero_id = random.randint(1000, 9999)
+
+    user_ids[uid] = numero_id
 
     try:
-        await interaction.user.edit(nick=f"{interaction.user.name} | {numero_id}")
+        nome_original = interaction.user.display_name
+
+        nome_original = re.sub(
+            r"^\d{4}\s*\|\s*",
+            "",
+            nome_original
+        ).strip()
+
+        await interaction.user.edit(
+            nick=f"{numero_id} | {nome_original}"
+        )
 
         embed = discord.Embed(
             title="✅ ID gerado com sucesso!",
             description=(
                 f"🆔 Seu novo ID é: **{numero_id}**\n\n"
                 f"🆔 Guarde ele, vai ser essencial para o seu roleplay!\n\n"
-                f"⚠️ Caso queira trocar peça para alguém de alto nível trocar (por motivo válido)."
+                f"⚠️ Caso queira trocar peça para alguém de alto nível trocar (explique um motivo)."
             ),
             color=discord.Color.green()
         )
@@ -98,52 +102,87 @@ async def pedirid(interaction: discord.Interaction):
         embed = discord.Embed(
             title="❌ Erro na geração",
             description=(
-                f"Não tenho permissão para alterar seu nome.\n\n"
-                f"Se você for staff o erro pode ser comum.\n"
-                f"Mas caso tenha cargo baixo, reporte o erro!"
+                "Não tenho permissão para alterar seu nome.\n\n"
+                "Caso você seja staff o erro é comum, mas caso tenha um cargo baixo reporte o erro."
             ),
             color=discord.Color.red()
         )
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True
+        )
 
-@bot.tree.command(name="resetid")
-@app_commands.describe(usuario="Usuário")
-async def resetid(interaction: discord.Interaction, usuario: discord.Member):
+@bot.tree.command(
+    name="resetid",
+    description="Remove o ID de um usuário"
+)
+@app_commands.describe(usuario="Usuário que terá o ID removido")
+async def resetid(
+    interaction: discord.Interaction,
+    usuario: discord.Member
+):
 
     if not tem_cargo_permitido(interaction):
-        await interaction.response.send_message("Sem permissão", ephemeral=True)
+        await interaction.response.send_message(
+            "Sem permissão.",
+            ephemeral=True
+        )
         return
 
-    nick = usuario.nick or usuario.name
-    novo = re.sub(r'\s*\|\s*\d{4}$', '', nick).strip()
+    if usuario.id in user_ids:
+        del user_ids[usuario.id]
+
+    nome = usuario.display_name
+
+    nome_sem_id = re.sub(
+        r"^\d{4}\s*\|\s*",
+        "",
+        nome
+    ).strip()
 
     try:
-        await usuario.edit(nick=novo if novo != usuario.name else None)
-        await interaction.response.send_message("ID removido", ephemeral=True)
+        await usuario.edit(
+            nick=nome_sem_id if nome_sem_id else None
+        )
+
+        await interaction.response.send_message(
+            f"✅ ID removido de {usuario.mention}.",
+            ephemeral=True
+        )
 
     except discord.Forbidden:
         await interaction.response.send_message(
-            "Sem permissão para alterar este usuário",
+            "Não tenho permissão para alterar este usuário.",
             ephemeral=True
         )
-        @bot.tree.command(name="anuncio", description="Envia um anúncio em embed")
+
+@bot.tree.command(
+    name="anuncio",
+    description="Envia um anúncio em embed"
+)
 @app_commands.describe(
-    titulo="Título do anúncio",
-    mensagem="Conteúdo do anúncio"
+    mensagem="Mensagem do anúncio"
 )
 async def anuncio(
     interaction: discord.Interaction,
-    titulo: str,
     mensagem: str
 ):
 
+    if not tem_cargo_permitido(interaction):
+        await interaction.response.send_message(
+            "Sem permissão.",
+            ephemeral=True
+        )
+        return
+
     embed = discord.Embed(
-        title=titulo,
         description=mensagem,
         color=discord.Color.blue()
     )
 
-    await interaction.response.send_message(embed=embed)
+    await interaction.response.send_message(
+        embed=embed
+    )
 
 bot.run(TOKEN)
