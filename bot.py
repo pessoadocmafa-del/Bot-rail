@@ -12,8 +12,6 @@ TOKEN = os.environ["DISCORD_TOKEN"]
 intents = discord.Intents.default()
 intents.members = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
-
 CARGOS_PERMITIDOS = [
     1506446522714161275,
     1506446521607131198,
@@ -25,16 +23,10 @@ CARGOS_PERMITIDOS = [
     1506446510798274661
 ]
 
-# armazenar IDs já usados
 user_ids = {}
 
 def tem_cargo_permitido(interaction: discord.Interaction):
     return any(role.id in CARGOS_PERMITIDOS for role in interaction.user.roles)
-
-@bot.event
-async def on_ready():
-    await bot.tree.sync()
-    print(f"Logado como {bot.user}")
 
 async def verificar_horario():
     await bot.wait_until_ready()
@@ -45,44 +37,46 @@ async def verificar_horario():
             break
         await asyncio.sleep(60)
 
-bot.loop.create_task(verificar_horario())
+class MyBot(commands.Bot):
+    async def setup_hook(self):
+        self.loop.create_task(verificar_horario())
+        await self.tree.sync()
+
+bot = MyBot(command_prefix="!", intents=intents)
+
+@bot.event
+async def on_ready():
+    print(f"Logado como {bot.user}")
 
 @bot.tree.command(name="pedirid")
 async def pedirid(interaction: discord.Interaction):
 
-    user_id = interaction.user.id
+    uid = interaction.user.id
     agora = datetime.datetime.now()
 
-    # se já tem ID
-    if user_id in user_ids:
-        data = user_ids[user_id]["data"]
-        hora = user_ids[user_id]["hora"]
-        id_antigo = user_ids[user_id]["id"]
+    if uid in user_ids:
+        data = user_ids[uid]["data"]
+        hora = user_ids[uid]["hora"]
+        old_id = user_ids[uid]["id"]
 
         await interaction.response.send_message(
             f"❌ Não foi possível gerar um novo ID.\n"
-            f"Você já obteve o ID `{id_antigo}` às `{hora}` no dia `{data}`.",
+            f"Você já obteve o ID `{old_id}` às `{hora}` no dia `{data}`.",
             ephemeral=True
         )
         return
 
-    # gerar novo ID único
     numero_id = random.randint(1000, 9999)
 
-    user_ids[user_id] = {
+    user_ids[uid] = {
         "id": numero_id,
         "data": agora.strftime("%d/%m"),
         "hora": agora.strftime("%H:%M")
     }
 
     try:
-        await interaction.user.edit(
-            nick=f"{interaction.user.name} | {numero_id}"
-        )
-        await interaction.response.send_message(
-            f"Seu novo ID é: {numero_id}",
-            ephemeral=True
-        )
+        await interaction.user.edit(nick=f"{interaction.user.name} | {numero_id}")
+        await interaction.response.send_message(f"Seu novo ID é: {numero_id}", ephemeral=True)
 
     except discord.Forbidden:
         await interaction.response.send_message(
@@ -95,10 +89,7 @@ async def pedirid(interaction: discord.Interaction):
 async def resetid(interaction: discord.Interaction, usuario: discord.Member):
 
     if not tem_cargo_permitido(interaction):
-        await interaction.response.send_message(
-            "Sem permissão",
-            ephemeral=True
-        )
+        await interaction.response.send_message("Sem permissão", ephemeral=True)
         return
 
     nick = usuario.nick or usuario.name
