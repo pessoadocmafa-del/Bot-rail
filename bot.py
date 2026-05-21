@@ -55,15 +55,19 @@ async def pedirid(interaction: discord.Interaction):
     agora = datetime.datetime.now()
 
     if uid in user_ids:
-        data = user_ids[uid]["data"]
-        hora = user_ids[uid]["hora"]
         old_id = user_ids[uid]["id"]
 
-        await interaction.response.send_message(
-            f"❌ Não foi possível gerar um novo ID.\n"
-            f"Você já obteve o ID `{old_id}` às `{hora}` no dia `{data}`.",
-            ephemeral=True
+        embed = discord.Embed(
+            title="❌ Erro na geração",
+            description=(
+                f"Esse erro acontece pois você já tem um ID.\n\n"
+                f"Seu ID antigo é **{old_id}**.\n"
+                f"Não é possível gerar um novo ID enquanto você já tiver um."
+            ),
+            color=discord.Color.red()
         )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         return
 
     numero_id = random.randint(1000, 9999)
@@ -76,13 +80,32 @@ async def pedirid(interaction: discord.Interaction):
 
     try:
         await interaction.user.edit(nick=f"{interaction.user.name} | {numero_id}")
-        await interaction.response.send_message(f"Seu novo ID é: {numero_id}", ephemeral=True)
+
+        embed = discord.Embed(
+            title="✅ ID gerado com sucesso!",
+            description=(
+                f"🆔 Seu novo ID é: **{numero_id}**\n\n"
+                f"🆔 Guarde ele, vai ser essencial para o seu roleplay!\n\n"
+                f"⚠️ Caso queira trocar peça para alguém de alto nível trocar (por motivo válido)."
+            ),
+            color=discord.Color.green()
+        )
+
+        await interaction.response.send_message(embed=embed)
 
     except discord.Forbidden:
-        await interaction.response.send_message(
-            f"Não consegui alterar seu nickname. Seu ID é: {numero_id}",
-            ephemeral=True
+
+        embed = discord.Embed(
+            title="❌ Erro na geração",
+            description=(
+                f"Não tenho permissão para alterar seu nome.\n\n"
+                f"Se você for staff o erro pode ser comum.\n"
+                f"Mas caso tenha cargo baixo, reporte o erro!"
+            ),
+            color=discord.Color.red()
         )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="resetid")
 @app_commands.describe(usuario="Usuário")
