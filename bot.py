@@ -145,9 +145,6 @@ async def anuncio(interaction: discord.Interaction, mensagem: str):
     await interaction.response.send_message(embed=embed)
     from discord.ui import View, Button, Modal, TextInput
 
-WHITELIST_QUESTIONS = []
-WHITELIST_LOG_CHANNEL = None
-WHITELIST_PANEL_CHANNEL = None
 wl_responses = {}
 
 
