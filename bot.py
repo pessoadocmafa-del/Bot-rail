@@ -6,16 +6,9 @@ import random
 import re
 import datetime
 import asyncio
+from discord.ui import View, Button, Modal, TextInput
 
 TOKEN = os.environ["DISCORD_TOKEN"]
-
-# =========================
-# WHITELIST CONFIG
-# =========================
-WHITELIST_QUESTIONS = []
-WHITELIST_LOG_CHANNEL = None
-WHITELIST_PANEL_CHANNEL = None
-wl_responses = {}
 
 # =========================
 # INTENTS
@@ -37,13 +30,31 @@ CARGOS_PERMITIDOS = [
     1506446510798274661
 ]
 
+# =========================
+# VARIÁVEIS GERAIS
+# =========================
 user_ids = {}
 
+WHITELIST_QUESTIONS = [
+    "Qual nome do seu personagem?",
+    "Qual sua idade e a do personagem?",
+    "O que é RDM e VDM?",
+    "Você já fez RP antes?",
+    "Algum recado?"
+]
+
+WHITELIST_LOG_CHANNEL = None
+WHITELIST_PANEL_CHANNEL = None
+wl_responses = {}
+
+# =========================
+# PERMISSÃO
+# =========================
 def tem_cargo_permitido(interaction: discord.Interaction):
     return any(role.id in CARGOS_PERMITIDOS for role in interaction.user.roles)
 
 # =========================
-# HORÁRIO (UTC-3 11h-23h)
+# HORÁRIO (11h–23h UTC-3)
 # =========================
 def horario_permitido():
     hora = (datetime.datetime.utcnow() - datetime.timedelta(hours=3)).hour
@@ -53,7 +64,7 @@ async def verificar_horario():
     await bot.wait_until_ready()
     while True:
         if not horario_permitido():
-            print("Fora do horário 11h–23h. Desligando bot...")
+            print("Fora do horário (11h–23h). Desligando bot...")
             await bot.close()
             break
         await asyncio.sleep(60)
@@ -75,30 +86,19 @@ async def on_ready():
 # =========================
 # /PEDIRID
 # =========================
-@bot.tree.command(name="pedirid", description="Gera um ID para roleplay")
+@bot.tree.command(name="pedirid", description="Gerar ID RP")
 async def pedirid(interaction: discord.Interaction):
 
     if not horario_permitido():
-        return await interaction.response.send_message(
-            "⛔ Fora do horário (11h–23h).",
-            ephemeral=True
-        )
+        return await interaction.response.send_message("⛔ Fora do horário.", ephemeral=True)
 
     uid = interaction.user.id
 
     if uid in user_ids:
-        old_id = user_ids[uid]
-
-        embed = discord.Embed(
-            title="❌ Erro na geração",
-            description=(
-                f"Você já possui um ID.\n\n"
-                f"Seu ID antigo é **{old_id}**."
-            ),
-            color=discord.Color.red()
+        return await interaction.response.send_message(
+            f"❌ Você já tem um ID: **{user_ids[uid]}**",
+            ephemeral=True
         )
-
-        return await interaction.response.send_message(embed=embed, ephemeral=True)
 
     numero_id = random.randint(1000, 9999)
     user_ids[uid] = numero_id
@@ -111,39 +111,24 @@ async def pedirid(interaction: discord.Interaction):
 
         embed = discord.Embed(
             title="✅ ID gerado com sucesso!",
-            description=(
-                f"🆔 Seu novo ID é: **{numero_id}**\n"
-                f"Guarde ele com cuidado."
-            ),
+            description=f"🆔 Seu novo ID é: **{numero_id}**",
             color=discord.Color.green()
         )
 
         await interaction.response.send_message(embed=embed)
 
     except discord.Forbidden:
-        await interaction.response.send_message(
-            "❌ Sem permissão para alterar nickname.",
-            ephemeral=True
-        )
+        await interaction.response.send_message("❌ Sem permissão de nick.", ephemeral=True)
 
 # =========================
 # /ANUNCIO
 # =========================
-@bot.tree.command(name="anuncio", description="Faz um anúncio")
+@bot.tree.command(name="anuncio", description="Fazer anúncio")
 @app_commands.describe(mensagem="Mensagem do anúncio")
 async def anuncio(interaction: discord.Interaction, mensagem: str):
 
-    if not horario_permitido():
-        return await interaction.response.send_message(
-            "⛔ Fora do horário.",
-            ephemeral=True
-        )
-
     if not tem_cargo_permitido(interaction):
-        return await interaction.response.send_message(
-            "❌ Sem permissão.",
-            ephemeral=True
-        )
+        return await interaction.response.send_message("❌ Sem permissão.", ephemeral=True)
 
     embed = discord.Embed(
         description=mensagem,
@@ -155,15 +140,14 @@ async def anuncio(interaction: discord.Interaction, mensagem: str):
 # =========================
 # WHITELIST MODAL
 # =========================
-from discord.ui import View, Button, Modal, TextInput
-
 class WhitelistModal(Modal, title="Whitelist RP"):
+
     def __init__(self):
         super().__init__()
 
         self.inputs = []
 
-        for q in WHITELIST_QUESTIONS[:5]:
+        for q in WHITELIST_QUESTIONS:
             field = TextInput(
                 label=q[:45],
                 style=discord.TextStyle.paragraph,
@@ -174,12 +158,11 @@ class WhitelistModal(Modal, title="Whitelist RP"):
 
     async def on_submit(self, interaction: discord.Interaction):
 
-        respostas = [i.value for i in self.inputs]
-        wl_responses[interaction.user.id] = respostas
+        wl_responses[interaction.user.id] = [i.value for i in self.inputs]
 
         embed = discord.Embed(
-            title="📥 Nova Whitelist",
-            description=f"Usuário: {interaction.user.mention}",
+            title="📥 Whitelist enviada",
+            description=f"{interaction.user.mention}",
             color=discord.Color.orange()
         )
 
@@ -187,10 +170,7 @@ class WhitelistModal(Modal, title="Whitelist RP"):
         if canal:
             await canal.send(embed=embed)
 
-        await interaction.response.send_message(
-            "✅ Enviado com sucesso!",
-            ephemeral=True
-        )
+        await interaction.response.send_message("✅ Enviado!", ephemeral=True)
 
 # =========================
 # BOTÃO WL
@@ -200,75 +180,83 @@ class WLButton(View):
         super().__init__(timeout=None)
 
     @discord.ui.button(label="Fazer Whitelist", style=discord.ButtonStyle.green)
-    async def wl_button(self, interaction: discord.Interaction, button: Button):
+    async def wl(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_modal(WhitelistModal())
 
 # =========================
 # SET WHITELIST
 # =========================
-@bot.tree.command(name="setwhitelist", description="Configurar whitelist")
-async def setwhitelist(interaction: discord.Interaction, perguntas: str, canal_logs: str, canal_painel: str):
+@bot.tree.command(name="setwhitelist", description="Criar painel whitelist")
+async def setwhitelist(interaction: discord.Interaction):
+
+    global WHITELIST_LOG_CHANNEL, WHITELIST_PANEL_CHANNEL
 
     if not tem_cargo_permitido(interaction):
-        return await interaction.response.send_message("Sem permissão.", ephemeral=True)
+        return await interaction.response.send_message("❌ Sem permissão.", ephemeral=True)
 
-    global WHITELIST_QUESTIONS, WHITELIST_LOG_CHANNEL, WHITELIST_PANEL_CHANNEL
-
-    WHITELIST_QUESTIONS = perguntas.split("|")
-    WHITELIST_LOG_CHANNEL = int(canal_logs)
-    WHITELIST_PANEL_CHANNEL = int(canal_painel)
-
-    canal = bot.get_channel(WHITELIST_PANEL_CHANNEL)
+    # usa canal atual como painel
+    WHITELIST_PANEL_CHANNEL = interaction.channel.id
+    WHITELIST_LOG_CHANNEL = interaction.channel.id
 
     embed = discord.Embed(
         title="📋 WHITELIST RP",
-        description="Clique para participar.",
+        description="Clique para fazer sua whitelist",
         color=discord.Color.red()
     )
 
-    await canal.send(embed=embed, view=WLButton())
+    await interaction.channel.send(embed=embed, view=WLButton())
 
-    await interaction.response.send_message("Whitelist configurada.", ephemeral=True)
+    await interaction.response.send_message("✅ WL criada", ephemeral=True)
 
 # =========================
-# WL APROVAR
+# APROVAR WL
 # =========================
-@bot.tree.command(name="wl_aprovar")
-async def wl_aprovar(interaction: discord.Interaction, usuario: discord.Member):
+@bot.tree.command(name="aprovarwl")
+async def aprovarwl(interaction: discord.Interaction, usuario: discord.Member):
 
     if not tem_cargo_permitido(interaction):
-        return await interaction.response.send_message("Sem permissão.", ephemeral=True)
+        return await interaction.response.send_message("❌ Sem permissão.", ephemeral=True)
 
     embed = discord.Embed(
-        title="✅ Aprovado",
-        description=f"{usuario.mention} foi aprovado.",
+        title="✅ APROVADO",
+        description="Você foi aprovado na whitelist!",
         color=discord.Color.green()
     )
 
+    try:
+        await usuario.send(embed=embed)
+    except:
+        pass
+
     canal = bot.get_channel(WHITELIST_LOG_CHANNEL)
     if canal:
-        await canal.send(embed=embed)
+        await canal.send(f"✅ {usuario} aprovado")
 
     await interaction.response.send_message("OK", ephemeral=True)
 
 # =========================
-# WL RECUSAR
+# RECUSAR WL
 # =========================
-@bot.tree.command(name="wl_recusar")
-async def wl_recusar(interaction: discord.Interaction, usuario: discord.Member, motivo: str):
+@bot.tree.command(name="recusarwl")
+async def recusarwl(interaction: discord.Interaction, usuario: discord.Member, motivo: str):
 
     if not tem_cargo_permitido(interaction):
-        return await interaction.response.send_message("Sem permissão.", ephemeral=True)
+        return await interaction.response.send_message("❌ Sem permissão.", ephemeral=True)
 
     embed = discord.Embed(
-        title="❌ Recusado",
-        description=f"{usuario.mention}\nMotivo: {motivo}",
+        title="❌ RECUSADO",
+        description=f"Motivo: {motivo}",
         color=discord.Color.red()
     )
 
+    try:
+        await usuario.send(embed=embed)
+    except:
+        pass
+
     canal = bot.get_channel(WHITELIST_LOG_CHANNEL)
     if canal:
-        await canal.send(embed=embed)
+        await canal.send(f"❌ {usuario} recusado: {motivo}")
 
     await interaction.response.send_message("OK", ephemeral=True)
 
