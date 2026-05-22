@@ -10,12 +10,14 @@ import datetime
 TOKEN = os.environ["DISCORD_TOKEN"]
 
 # =========================
-# CONFIG
+# CONFIGURAÇÕES
 # =========================
 LOG_CHANNEL_ID = 1506671577931055255
 
+CALL_STAFF_ROLE = 1507089576462778499
+
 WL_ROLE_ID = 1506446576267038821
-REMOVE_ROLE_ID = 1506446577261084733
+WL_REMOVE_ROLE_ID = 1506446577261084733
 
 CARGOS_PERMITIDOS = [
     1506446522714161275,
@@ -37,21 +39,19 @@ WHITELIST_QUESTIONS = [
 ]
 
 user_ids = {}
-wl_data = {}
 ticket_counter = 0
 
 # =========================
-# PERMISSÃO
-# =========================
-def staff(interaction: discord.Interaction):
-    return any(role.id in CARGOS_PERMITIDOS for role in interaction.user.roles)
-
-# =========================
-# HORÁRIO
+# HORÁRIO (11h–23h UTC-3)
 # =========================
 def horario_ok():
-    hora = (datetime.datetime.utcnow() - datetime.timedelta(hours=3)).hour
-    return 11 <= hora < 23
+    return 11 <= (datetime.datetime.utcnow() - datetime.timedelta(hours=3)).hour < 23
+
+# =========================
+# PERMISSÃO STAFF
+# =========================
+def staff(interaction: discord.Interaction):
+    return any(r.id in CARGOS_PERMITIDOS for r in interaction.user.roles)
 
 # =========================
 # BOT
@@ -70,28 +70,32 @@ async def on_ready():
     print(f"Logado como {bot.user}")
 
 # =========================
-# PEDIR ID
+# 🆔 PEDIR ID
 # =========================
 @bot.tree.command(name="pedirid")
 async def pedirid(interaction: discord.Interaction):
 
     if not horario_ok():
-        embed = discord.Embed(
-            title="❌ ERRO",
-            description="Bot fora do horário de funcionamento (11h–23h UTC-3).",
-            color=discord.Color.red()
+        return await interaction.response.send_message(
+            embed=discord.Embed(
+                title="❌ ERRO",
+                description="⛔ Fora do horário (11h–23h UTC-3).",
+                color=discord.Color.red()
+            ),
+            ephemeral=True
         )
-        return await interaction.response.send_message(embed=embed, ephemeral=True)
 
     uid = interaction.user.id
 
     if uid in user_ids:
-        embed = discord.Embed(
-            title="❌ ERRO",
-            description=f"Você já possui um ID registrado: **{user_ids[uid]}**",
-            color=discord.Color.red()
+        return await interaction.response.send_message(
+            embed=discord.Embed(
+                title="❌ ERRO",
+                description=f"Você já tem ID: **{user_ids[uid]}**",
+                color=discord.Color.red()
+            ),
+            ephemeral=True
         )
-        return await interaction.response.send_message(embed=embed, ephemeral=True)
 
     numero = random.randint(1000, 9999)
     user_ids[uid] = numero
@@ -100,70 +104,101 @@ async def pedirid(interaction: discord.Interaction):
 
     await interaction.user.edit(nick=f"{numero} | {nome}")
 
-    embed = discord.Embed(
-        title="🟢 ID GERADO COM SUCESSO",
-        description=f"🆔 Seu novo ID é: **{numero}**\n\nGuarde ele, ele será essencial para o seu roleplay.",
-        color=discord.Color.green()
-    )
-
-    await interaction.response.send_message(embed=embed)
-
-# =========================
-# RESET ID
-# =========================
-@bot.tree.command(name="resetid")
-async def resetid(interaction: discord.Interaction, usuario: discord.Member):
-
-    if not staff(interaction):
-        embed = discord.Embed(
-            title="❌ ERRO",
-            description="Você não tem permissão para utilizar este comando.",
-            color=discord.Color.red()
+    await interaction.response.send_message(
+        embed=discord.Embed(
+            title="🟢 ID GERADO",
+            description=f"Seu ID: **{numero}**",
+            color=discord.Color.green()
         )
-        return await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    nome = re.sub(r"^\d{4}\s*\|\s*", "", usuario.display_name)
-
-    await usuario.edit(nick=nome if nome != usuario.name else None)
-
-    embed = discord.Embed(
-        title="🟢 ID RESETADO COM SUCESSO",
-        description=f"O ID de {usuario.mention} foi removido com sucesso.",
-        color=discord.Color.green()
     )
 
-    await interaction.response.send_message(embed=embed, ephemeral=True)
-
 # =========================
-# ANÚNCIO
+# 📢 ANÚNCIO
 # =========================
 @bot.tree.command(name="anuncio")
 async def anuncio(interaction: discord.Interaction, mensagem: str):
 
-    if not staff(interaction):
-        embed = discord.Embed(
-            title="❌ ERRO",
-            description="Você não tem permissão para utilizar este comando.",
-            color=discord.Color.red()
+    if not horario_ok():
+        return await interaction.response.send_message(
+            embed=discord.Embed(
+                title="❌ ERRO",
+                description="⛔ Fora do horário (11h–23h UTC-3).",
+                color=discord.Color.red()
+            ),
+            ephemeral=True
         )
-        return await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    embed = discord.Embed(
-        title="📢 ANÚNCIO OFICIAL",
-        description=mensagem,
-        color=discord.Color.green()
+    if not staff(interaction):
+        return await interaction.response.send_message(
+            embed=discord.Embed(
+                title="❌ ERRO",
+                description="Sem permissão.",
+                color=discord.Color.red()
+            ),
+            ephemeral=True
+        )
+
+    await interaction.response.send_message(
+        embed=discord.Embed(
+            title="📢 ANÚNCIO",
+            description=mensagem,
+            color=discord.Color.green()
+        )
     )
 
-    await interaction.response.send_message(embed=embed)
+# =========================
+# 🎟️ WHITELIST
+# =========================
+class WLReviewView(discord.ui.View):
 
-# =========================
-# WHITELIST
-# =========================
+    def __init__(self, user):
+        super().__init__()
+        self.user = user
+
+    @discord.ui.button(label="🟢 Aprovar WL", style=discord.ButtonStyle.green)
+    async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        role = interaction.guild.get_role(WL_ROLE_ID)
+        remove_role = interaction.guild.get_role(WL_REMOVE_ROLE_ID)
+
+        if role:
+            await self.user.add_roles(role)
+        if remove_role:
+            await self.user.remove_roles(remove_role)
+
+        try:
+            await self.user.send(
+                embed=discord.Embed(
+                    title="🟢 WL APROVADA",
+                    description="Sua whitelist foi aprovada no servidor!",
+                    color=discord.Color.green()
+                )
+            )
+        except:
+            pass
+
+        await interaction.response.send_message("Aprovado.", ephemeral=True)
+
+    @discord.ui.button(label="🔴 Reprovar WL", style=discord.ButtonStyle.red)
+    async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        try:
+            await self.user.send(
+                embed=discord.Embed(
+                    title="🔴 WL REPROVADA",
+                    description="Sua whitelist foi reprovada.",
+                    color=discord.Color.red()
+                )
+            )
+        except:
+            pass
+
+        await interaction.response.send_message("Reprovado.", ephemeral=True)
+
 class WLModal(discord.ui.Modal, title="WHITELIST RP"):
 
     def __init__(self):
         super().__init__()
-
         self.inputs = []
 
         for q in WHITELIST_QUESTIONS:
@@ -173,66 +208,64 @@ class WLModal(discord.ui.Modal, title="WHITELIST RP"):
 
     async def on_submit(self, interaction: discord.Interaction):
 
-        respostas = [i.value for i in self.inputs]
-
         log = bot.get_channel(LOG_CHANNEL_ID)
 
         embed = discord.Embed(
-            title="📋 NOVA WHITELIST ENVIADA",
-            description=f"Usuário: {interaction.user.mention}",
+            title="📋 WHITELIST ENVIADA",
+            description=f"👤 {interaction.user.mention}",
             color=discord.Color.green()
         )
 
-        for q, r in zip(WHITELIST_QUESTIONS, respostas):
+        for q, r in zip(WHITELIST_QUESTIONS, [i.value for i in self.inputs]):
             embed.add_field(name=q, value=r, inline=False)
 
-        await log.send(embed=embed)
+        await log.send(embed=embed, view=WLReviewView(interaction.user))
 
-        ok = discord.Embed(
-            title="🟢 WHITELIST ENVIADA COM SUCESSO",
-            description="Sua whitelist foi enviada para análise.",
-            color=discord.Color.green()
+        await interaction.response.send_message(
+            embed=discord.Embed(
+                title="🟢 WL ENVIADA",
+                description="Sua whitelist foi enviada.",
+                color=discord.Color.green()
+            ),
+            ephemeral=True
         )
-
-        await interaction.response.send_message(embed=ok, ephemeral=True)
 
 class WLView(discord.ui.View):
 
-    @discord.ui.button(label="✅ - Fazer WL", style=discord.ButtonStyle.green)
-    async def wl(self, interaction, button):
-        await interaction.response.send_modal(WLModal())
+    @discord.ui.button(label="✅ Fazer WL", style=discord.ButtonStyle.green)
+    async def wl(self, i, b):
+        await i.response.send_modal(WLModal())
 
 @bot.tree.command(name="setwhitelist")
 async def setwhitelist(interaction: discord.Interaction):
 
     if not staff(interaction):
-        embed = discord.Embed(
-            title="❌ ERRO",
-            description="Você não tem permissão para utilizar este comando.",
-            color=discord.Color.red()
+        return await interaction.response.send_message(
+            embed=discord.Embed(
+                title="❌ ERRO",
+                description="Sem permissão.",
+                color=discord.Color.red()
+            ),
+            ephemeral=True
         )
-        return await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    embed = discord.Embed(
-        title="✅ - WHITE LIST",
-        description=(
-            "A whitelist é uma forma de se verificar rapidamente, sem precisar pedir a um administrador manualmente, antes de abrir é recomendado estudar as regras e criar um personagem e é obrigatório pedir id."
+    await interaction.channel.send(
+        embed=discord.Embed(
+            title="📋 WHITE LIST",
+            description=(
+                "A whitelist é uma forma de se verificar rapidamente.\n\n"
+                "Estude as regras antes de abrir.\n"
+                "É obrigatório pedir ID."
+            ),
+            color=discord.Color.green()
         ),
-        color=discord.Color.green()
+        view=WLView()
     )
 
-    await interaction.channel.send(embed=embed, view=WLView())
-
-    ok = discord.Embed(
-        title="🟢 SUCESSO",
-        description="Whitelist configurada com sucesso.",
-        color=discord.Color.green()
-    )
-
-    await interaction.response.send_message(embed=ok, ephemeral=True)
+    await interaction.response.send_message("WL ativada.", ephemeral=True)
 
 # =========================
-# TICKETS
+# 🎟️ TICKETS
 # =========================
 class TicketView(discord.ui.View):
 
@@ -242,13 +275,13 @@ class TicketView(discord.ui.View):
     @discord.ui.button(label="🤔 Dúvidas", style=discord.ButtonStyle.blurple)
     async def d(self, i, b): await self.create(i, "Dúvidas")
 
-    @discord.ui.button(label="⚠️ Denúncias", style=discord.ButtonStyle.red)
-    async def dn(self, i, b): await self.create(i, "Denúncias")
+    @discord.ui.button(label="⚠️ Denúncia", style=discord.ButtonStyle.red)
+    async def dn(self, i, b): await self.create(i, "Denúncia")
 
     @discord.ui.button(label="❔ Outros", style=discord.ButtonStyle.gray)
     async def o(self, i, b): await self.create(i, "Outros")
 
-    async def create(self, interaction, motivo):
+    async def create(self, interaction, opcao):
 
         global ticket_counter
         ticket_counter += 1
@@ -259,50 +292,55 @@ class TicketView(discord.ui.View):
             f"{name}-{ticket_counter}"
         )
 
-        embed = discord.Embed(
-            title="🎟️ - TICKET",
-            description=(
-                "Crie um ticket para falar diretamente com staffs sem precisar entrar em DMS, abra tickets já com motivo em mente e fale direto, não espere alguém  falar primeiro, categorias de ticket:\n\n"
-                "🤝 - Parceria\nPeça parceria (apenas fundadores e donos podem aceitar)\n\n"
-                "🤔 - Dúvidas \nPergunte sobre algo que você não tem certeza ou não sabe.\n\n"
-                "⚠️ - Denúncias\nDenuncie atos de anti roleplay, assédio, discurso de odio, risco de raid entre outros.\n\n"
-                "❔ - Outros\nFaça alguma pergunta que não está na lista.\n\n"
-                "@everyone"
+        await channel.send(
+            embed=discord.Embed(
+                title="🎟️ TICKET",
+                description=(
+                    "Crie um ticket para falar diretamente com staffs sem precisar de DM.\n"
+                    "Abra tickets já com motivo em mente.\n\n"
+                    "@everyone"
+                ),
+                color=discord.Color.green()
+            )
+        )
+
+        await channel.send(
+            embed=discord.Embed(
+                title="🎟️ TICKET ABERTO",
+                description=(
+                    f'Opção: "{opcao}"\n\n'
+                    "Comente antes de um staff chegar."
+                ),
+                color=discord.Color.green()
             ),
-            color=discord.Color.green()
+            view=TicketControl(interaction.user)
         )
 
-        await channel.send(embed=embed, view=TicketControl(interaction.user))
-
-        ok = discord.Embed(
-            title="🟢 TICKET CRIADO",
-            description=f"{channel.mention}",
-            color=discord.Color.green()
+        await interaction.response.send_message(
+            embed=discord.Embed(
+                title="🟢 TICKET CRIADO",
+                description=channel.mention,
+                color=discord.Color.green()
+            ),
+            ephemeral=True
         )
-
-        await interaction.response.send_message(embed=ok, ephemeral=True)
 
 class TicketControl(discord.ui.View):
 
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.claimed = None
 
     @discord.ui.button(label="🫴 Reivindicar Ticket", style=discord.ButtonStyle.green)
     async def claim(self, i, b):
-
-        self.claimed = i.user
-        b.label = f"🔒 Reivindicado por {i.user.display_name}"
+        b.label = f"🔒 {i.user.display_name}"
         b.disabled = True
-
         await i.message.edit(view=self)
-
-        await i.response.send_message("🟢 Ticket reivindicado.", ephemeral=True)
+        await i.response.send_message("OK", ephemeral=True)
 
     @discord.ui.button(label="📢 Chamar Staff", style=discord.ButtonStyle.red)
     async def staff(self, i, b):
-        await i.channel.send("<@&1506446576267038821>")
+        await i.channel.send(f"<@&{CALL_STAFF_ROLE}>")
 
     @discord.ui.button(label="👨 Chamar Membro", style=discord.ButtonStyle.blurple)
     async def member(self, i, b):
@@ -311,44 +349,14 @@ class TicketControl(discord.ui.View):
     @discord.ui.button(label="❌ Fechar", style=discord.ButtonStyle.red)
     async def close(self, i, b):
 
-        await i.response.send_message("Deletando em 3...", ephemeral=True)
+        await i.response.send_message("Fechando em 3...", ephemeral=True)
 
-        await i.channel.send("1...")
-        await asyncio.sleep(1)
-        await i.channel.send("2...")
-        await asyncio.sleep(1)
-        await i.channel.send("3...")
-        await asyncio.sleep(1)
+        for x in range(3, 0, -1):
+            await asyncio.sleep(1)
+            await i.channel.send(f"{x}...")
+
         await i.channel.send("Deletando!")
-
         await i.channel.delete()
-
-@bot.tree.command(name="setticket")
-async def setticket(interaction: discord.Interaction):
-
-    if not staff(interaction):
-        embed = discord.Embed(
-            title="❌ ERRO",
-            description="Você não tem permissão para utilizar este comando.",
-            color=discord.Color.red()
-        )
-        return await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    embed = discord.Embed(
-        title="🎟️ - TICKET",
-        description="Sistema de tickets ativado.",
-        color=discord.Color.green()
-    )
-
-    await interaction.channel.send(embed=embed, view=TicketView())
-
-    ok = discord.Embed(
-        title="🟢 SUCESSO",
-        description="Sistema de tickets configurado.",
-        color=discord.Color.green()
-    )
-
-    await interaction.response.send_message(embed=ok, ephemeral=True)
 
 # =========================
 # RUN
