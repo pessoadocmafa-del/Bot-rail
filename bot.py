@@ -13,7 +13,6 @@ TOKEN = os.environ["DISCORD_TOKEN"]
 # CONFIG
 # =========================
 LOG_CHANNEL_ID = 1506671577931055255
-
 CALL_STAFF_ROLE = 1507089576462778499
 
 WL_ROLE_ID = 1506446576267038821
@@ -48,7 +47,7 @@ def horario_ok():
     return 11 <= (datetime.datetime.utcnow() - datetime.timedelta(hours=3)).hour < 23
 
 # =========================
-# PERMISSÃO
+# STAFF CHECK
 # =========================
 def staff(interaction: discord.Interaction):
     return any(r.id in CARGOS_PERMITIDOS for r in interaction.user.roles)
@@ -129,7 +128,7 @@ async def resetid(interaction: discord.Interaction, usuario: discord.Member):
         )
 
     nome = re.sub(r"^\d{4}\s*\|\s*", "", usuario.display_name)
-    await usuario.edit(nick=nome if nome != usuario.name else None)
+    await usuario.edit(nick=nome)
 
     await interaction.response.send_message(
         embed=discord.Embed(
@@ -175,7 +174,7 @@ async def anuncio(interaction: discord.Interaction, mensagem: str):
     )
 
 # =========================
-# WHITELIST (APROVAÇÃO)
+# WHITELIST
 # =========================
 class WLReviewView(discord.ui.View):
 
@@ -281,9 +280,7 @@ async def setwhitelist(interaction: discord.Interaction):
         embed=discord.Embed(
             title="📋 WHITE LIST",
             description=(
-                "A whitelist serve para verificação rápida.\n"
-                "Leia as regras antes de abrir.\n"
-                "ID obrigatório."
+                "A whitelist é uma forma de se verificar rapidamente, sem precisar pedir a um administrador manualmente, antes de abrir é recomendado estudar as regras e criar um personagem e é obrigatório pedir id."
             ),
             color=discord.Color.green()
         ),
@@ -293,7 +290,7 @@ async def setwhitelist(interaction: discord.Interaction):
     await interaction.response.send_message("WL ativada.", ephemeral=True)
 
 # =========================
-# TICKETS + SETTICKET
+# TICKETS
 # =========================
 class TicketView(discord.ui.View):
 
@@ -303,8 +300,8 @@ class TicketView(discord.ui.View):
     @discord.ui.button(label="🤔 Dúvidas", style=discord.ButtonStyle.blurple)
     async def d(self, i, b): await self.create(i, "Dúvidas")
 
-    @discord.ui.button(label="⚠️ Denúncia", style=discord.ButtonStyle.red)
-    async def dn(self, i, b): await self.create(i, "Denúncia")
+    @discord.ui.button(label="⚠️ Denúncias", style=discord.ButtonStyle.red)
+    async def dn(self, i, b): await self.create(i, "Denúncias")
 
     @discord.ui.button(label="❔ Outros", style=discord.ButtonStyle.gray)
     async def o(self, i, b): await self.create(i, "Outros")
@@ -322,10 +319,17 @@ class TicketView(discord.ui.View):
 
         await channel.send(
             embed=discord.Embed(
-                title="🎟️ TICKET",
+                title="🎟️ - TICKET",
                 description=(
-                    "Crie um ticket para falar com a staff sem DM.\n"
-                    "Escolha o motivo corretamente.\n\n"
+                    "Crie um ticket para falar diretamente com staffs sem precisar entrar em DMS, abra tickets já com motivo em mente e fale direto, não espere alguém falar primeiro, categorias de ticket:\n\n"
+                    "🤝 - Parceria\n"
+                    "Peça parceria (apenas fundadores e donos podem aceitar)\n\n"
+                    "🤔 - Dúvidas\n"
+                    "Pergunte sobre algo que você não tem certeza ou não sabe.\n\n"
+                    "⚠️ - Denúncias\n"
+                    "Denuncie atos de anti roleplay, assédio, discurso de odio, risco de raid entre outros.\n\n"
+                    "❔ - Outros\n"
+                    "Faça alguma pergunta que não está na lista.\n\n"
                     "@everyone"
                 ),
                 color=discord.Color.green()
@@ -335,7 +339,13 @@ class TicketView(discord.ui.View):
         await channel.send(
             embed=discord.Embed(
                 title="🎟️ TICKET ABERTO",
-                description=f'Opção: "{opcao}"\nComente antes da staff chegar.',
+                description=(
+                    f'Opção: "{opcao}"\n\n'
+                    "Ticket criado com sucesso! Dicas para melhor atendimento:\n"
+                    "• Falar o assunto logo\n"
+                    "• Chamar staff\n"
+                    "Adeus!"
+                ),
                 color=discord.Color.green()
             ),
             view=TicketControl(interaction.user)
@@ -383,7 +393,6 @@ class TicketControl(discord.ui.View):
         await i.channel.send("Deletando!")
         await i.channel.delete()
 
-
 @bot.tree.command(name="setticket")
 async def setticket(interaction: discord.Interaction):
 
@@ -401,8 +410,15 @@ async def setticket(interaction: discord.Interaction):
         embed=discord.Embed(
             title="🎟️ TICKET",
             description=(
-                "Crie um ticket para falar diretamente com staffs sem precisar de DM.\n"
-                "Categorias: Parceria, Dúvidas, Denúncia, Outros.\n\n"
+                "Crie um ticket para falar diretamente com staffs sem precisar entrar em DMS, abra tickets já com motivo em mente e fale direto, não espere alguém falar primeiro, categorias de ticket:\n\n"
+                "🤝 - Parceria\n"
+                "Peça parceria (apenas fundadores e donos podem aceitar)\n\n"
+                "🤔 - Dúvidas\n"
+                "Pergunte sobre algo que você não tem certeza ou não sabe.\n\n"
+                "⚠️ - Denúncias\n"
+                "Denuncie atos de anti roleplay, assédio, discurso de odio, risco de raid entre outros.\n\n"
+                "❔ - Outros\n"
+                "Faça alguma pergunta que não está na lista.\n\n"
                 "@everyone"
             ),
             color=discord.Color.green()
