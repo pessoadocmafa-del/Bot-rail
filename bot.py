@@ -178,11 +178,8 @@ async def anuncio(
 
     embed = discord.Embed(
         description=mensagem,
-        color=discord.Color.blue()
+        color=discord.Color.red()
     )
 
-    await interaction.response.send_message(
-        embed=embed
-    )
-
-bot.run(TOKEN)
+    await interaction.response.send_message(embed=embed)
+    bot.run(TOKEN)
