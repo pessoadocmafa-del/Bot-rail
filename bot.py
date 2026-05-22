@@ -78,7 +78,7 @@ async def pedirid(interaction: discord.Interaction):
     if not horario_ok():
         embed = discord.Embed(
             title="❌ ERRO",
-            description="Fora do horário (11h–23h).",
+            description="Bot fora do horário de funcionamento (11h–23h UTC-3).",
             color=discord.Color.red()
         )
         return await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -88,7 +88,7 @@ async def pedirid(interaction: discord.Interaction):
     if uid in user_ids:
         embed = discord.Embed(
             title="❌ ERRO",
-            description=f"Você já tem ID: **{user_ids[uid]}**",
+            description=f"Você já possui um ID registrado: **{user_ids[uid]}**",
             color=discord.Color.red()
         )
         return await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -101,8 +101,8 @@ async def pedirid(interaction: discord.Interaction):
     await interaction.user.edit(nick=f"{numero} | {nome}")
 
     embed = discord.Embed(
-        title="🟢 ID CRIADO",
-        description=f"Seu ID: **{numero}**",
+        title="🟢 ID GERADO COM SUCESSO",
+        description=f"🆔 Seu novo ID é: **{numero}**\n\nGuarde ele, ele será essencial para o seu roleplay.",
         color=discord.Color.green()
     )
 
@@ -117,7 +117,7 @@ async def resetid(interaction: discord.Interaction, usuario: discord.Member):
     if not staff(interaction):
         embed = discord.Embed(
             title="❌ ERRO",
-            description="Sem permissão.",
+            description="Você não tem permissão para utilizar este comando.",
             color=discord.Color.red()
         )
         return await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -127,8 +127,8 @@ async def resetid(interaction: discord.Interaction, usuario: discord.Member):
     await usuario.edit(nick=nome if nome != usuario.name else None)
 
     embed = discord.Embed(
-        title="🟢 ID RESETADO",
-        description=f"ID removido de {usuario.mention}",
+        title="🟢 ID RESETADO COM SUCESSO",
+        description=f"O ID de {usuario.mention} foi removido com sucesso.",
         color=discord.Color.green()
     )
 
@@ -143,13 +143,13 @@ async def anuncio(interaction: discord.Interaction, mensagem: str):
     if not staff(interaction):
         embed = discord.Embed(
             title="❌ ERRO",
-            description="Sem permissão.",
+            description="Você não tem permissão para utilizar este comando.",
             color=discord.Color.red()
         )
         return await interaction.response.send_message(embed=embed, ephemeral=True)
 
     embed = discord.Embed(
-        title="📢 ANÚNCIO",
+        title="📢 ANÚNCIO OFICIAL",
         description=mensagem,
         color=discord.Color.green()
     )
@@ -159,12 +159,13 @@ async def anuncio(interaction: discord.Interaction, mensagem: str):
 # =========================
 # WHITELIST
 # =========================
-class WLModal(discord.ui.Modal, title="WHITE LIST RP"):
+class WLModal(discord.ui.Modal, title="WHITELIST RP"):
 
     def __init__(self):
         super().__init__()
 
         self.inputs = []
+
         for q in WHITELIST_QUESTIONS:
             t = discord.ui.TextInput(label=q[:45], style=discord.TextStyle.paragraph)
             self.inputs.append(t)
@@ -177,8 +178,8 @@ class WLModal(discord.ui.Modal, title="WHITE LIST RP"):
         log = bot.get_channel(LOG_CHANNEL_ID)
 
         embed = discord.Embed(
-            title="📋 NOVA WL",
-            description=interaction.user.mention,
+            title="📋 NOVA WHITELIST ENVIADA",
+            description=f"Usuário: {interaction.user.mention}",
             color=discord.Color.green()
         )
 
@@ -188,8 +189,8 @@ class WLModal(discord.ui.Modal, title="WHITE LIST RP"):
         await log.send(embed=embed)
 
         ok = discord.Embed(
-            title="🟢 WL ENVIADA",
-            description="Sua whitelist foi enviada com sucesso.",
+            title="🟢 WHITELIST ENVIADA COM SUCESSO",
+            description="Sua whitelist foi enviada para análise.",
             color=discord.Color.green()
         )
 
@@ -207,14 +208,16 @@ async def setwhitelist(interaction: discord.Interaction):
     if not staff(interaction):
         embed = discord.Embed(
             title="❌ ERRO",
-            description="Sem permissão.",
+            description="Você não tem permissão para utilizar este comando.",
             color=discord.Color.red()
         )
         return await interaction.response.send_message(embed=embed, ephemeral=True)
 
     embed = discord.Embed(
-        title="✅ WHITE LIST",
-        description="Clique para iniciar sua WL RP.",
+        title="✅ - WHITE LIST",
+        description=(
+            "A whitelist é uma forma de se verificar rapidamente, sem precisar pedir a um administrador manualmente, antes de abrir é recomendado estudar as regras e criar um personagem e é obrigatório pedir id."
+        ),
         color=discord.Color.green()
     )
 
@@ -222,7 +225,7 @@ async def setwhitelist(interaction: discord.Interaction):
 
     ok = discord.Embed(
         title="🟢 SUCESSO",
-        description="Whitelist criada.",
+        description="Whitelist configurada com sucesso.",
         color=discord.Color.green()
     )
 
@@ -239,8 +242,8 @@ class TicketView(discord.ui.View):
     @discord.ui.button(label="🤔 Dúvidas", style=discord.ButtonStyle.blurple)
     async def d(self, i, b): await self.create(i, "Dúvidas")
 
-    @discord.ui.button(label="⚠️ Denúncia", style=discord.ButtonStyle.red)
-    async def dn(self, i, b): await self.create(i, "Denúncia")
+    @discord.ui.button(label="⚠️ Denúncias", style=discord.ButtonStyle.red)
+    async def dn(self, i, b): await self.create(i, "Denúncias")
 
     @discord.ui.button(label="❔ Outros", style=discord.ButtonStyle.gray)
     async def o(self, i, b): await self.create(i, "Outros")
@@ -257,8 +260,15 @@ class TicketView(discord.ui.View):
         )
 
         embed = discord.Embed(
-            title=f"🎟️ {motivo}",
-            description="Ticket criado com sucesso.",
+            title="🎟️ - TICKET",
+            description=(
+                "Crie um ticket para falar diretamente com staffs sem precisar entrar em DMS, abra tickets já com motivo em mente e fale direto, não espere alguém  falar primeiro, categorias de ticket:\n\n"
+                "🤝 - Parceria\nPeça parceria (apenas fundadores e donos podem aceitar)\n\n"
+                "🤔 - Dúvidas \nPergunte sobre algo que você não tem certeza ou não sabe.\n\n"
+                "⚠️ - Denúncias\nDenuncie atos de anti roleplay, assédio, discurso de odio, risco de raid entre outros.\n\n"
+                "❔ - Outros\nFaça alguma pergunta que não está na lista.\n\n"
+                "@everyone"
+            ),
             color=discord.Color.green()
         )
 
@@ -279,11 +289,11 @@ class TicketControl(discord.ui.View):
         self.user = user
         self.claimed = None
 
-    @discord.ui.button(label="🫴 Reivindicar", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="🫴 Reivindicar Ticket", style=discord.ButtonStyle.green)
     async def claim(self, i, b):
 
         self.claimed = i.user
-        b.label = f"🔒 {i.user.display_name}"
+        b.label = f"🔒 Reivindicado por {i.user.display_name}"
         b.disabled = True
 
         await i.message.edit(view=self)
@@ -301,11 +311,15 @@ class TicketControl(discord.ui.View):
     @discord.ui.button(label="❌ Fechar", style=discord.ButtonStyle.red)
     async def close(self, i, b):
 
-        await i.response.send_message("Fechando...", ephemeral=True)
+        await i.response.send_message("Deletando em 3...", ephemeral=True)
 
-        for x in range(3, 0, -1):
-            await asyncio.sleep(1)
-            await i.channel.send(f"⏳ {x}")
+        await i.channel.send("1...")
+        await asyncio.sleep(1)
+        await i.channel.send("2...")
+        await asyncio.sleep(1)
+        await i.channel.send("3...")
+        await asyncio.sleep(1)
+        await i.channel.send("Deletando!")
 
         await i.channel.delete()
 
@@ -315,14 +329,14 @@ async def setticket(interaction: discord.Interaction):
     if not staff(interaction):
         embed = discord.Embed(
             title="❌ ERRO",
-            description="Sem permissão.",
+            description="Você não tem permissão para utilizar este comando.",
             color=discord.Color.red()
         )
         return await interaction.response.send_message(embed=embed, ephemeral=True)
 
     embed = discord.Embed(
-        title="🎟️ TICKET RP",
-        description="Clique para abrir ticket.",
+        title="🎟️ - TICKET",
+        description="Sistema de tickets ativado.",
         color=discord.Color.green()
     )
 
@@ -330,7 +344,7 @@ async def setticket(interaction: discord.Interaction):
 
     ok = discord.Embed(
         title="🟢 SUCESSO",
-        description="Ticket sistema criado.",
+        description="Sistema de tickets configurado.",
         color=discord.Color.green()
     )
 
