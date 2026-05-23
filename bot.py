@@ -48,7 +48,6 @@ def horario_ok():
     agora = datetime.datetime.utcnow() - datetime.timedelta(hours=3)
     return 11 <= agora.hour < 23
 
-async def verificar_horario():
     await bot.wait_until_ready()
 
     while not bot.is_closed():
@@ -82,9 +81,6 @@ bot = MyBot(command_prefix="!", intents=intents)
 @bot.event
 async def on_ready():
     print(f"Logado como {bot.user}")
-
-    if not hasattr(bot, "horario_task"):
-        bot.horario_task = asyncio.create_task(verificar_horario())
 
 # =========================
 # PEDIR ID
