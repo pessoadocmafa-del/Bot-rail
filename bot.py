@@ -48,18 +48,6 @@ def horario_ok():
     agora = datetime.datetime.utcnow() - datetime.timedelta(hours=3)
     return 11 <= agora.hour < 23
 
-    await bot.wait_until_ready()
-
-    while not bot.is_closed():
-        agora = datetime.datetime.utcnow() - datetime.timedelta(hours=3)
-
-        if agora.hour < 11 or agora.hour >= 23:
-            print("Fora do horário de funcionamento. Desligando bot...")
-            await bot.close()
-            return
-
-        await asyncio.sleep(60)
-
 # =========================
 # STAFF CHECK
 # =========================
