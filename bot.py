@@ -43,8 +43,23 @@ ticket_counter = 0
 # =========================
 # HORÁRIO
 # =========================
+
 def horario_ok():
-    return 11 <= (datetime.datetime.utcnow() - datetime.timedelta(hours=3)).hour < 23
+    agora = datetime.datetime.utcnow() - datetime.timedelta(hours=3)
+    return 11 <= agora.hour < 23
+
+async def verificar_horario():
+    await bot.wait_until_ready()
+
+    while not bot.is_closed():
+        agora = datetime.datetime.utcnow() - datetime.timedelta(hours=3)
+
+        if agora.hour < 11 or agora.hour >= 23:
+            print("Fora do horário de funcionamento. Desligando bot...")
+            await bot.close()
+            return
+
+        await asyncio.sleep(60)
 
 # =========================
 # STAFF CHECK
@@ -67,6 +82,9 @@ bot = MyBot(command_prefix="!", intents=intents)
 @bot.event
 async def on_ready():
     print(f"Logado como {bot.user}")
+
+    if not hasattr(bot, "horario_task"):
+        bot.horario_task = asyncio.create_task(verificar_horario())
 
 # =========================
 # PEDIR ID
