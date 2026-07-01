@@ -45,7 +45,7 @@ def horario_ok():
 # STAFF CHECK (corrigido)
 # =========================
 def staff(interaction: discord.Interaction):
-    return any(role.id in CARGOS_PERMITIDOS for role in interaction.user.roles)
+    return any(user.id in CARGOS_PERMITIDOS for role in interaction.user.roles)
 
 # =========================
 # BOT SETUP
