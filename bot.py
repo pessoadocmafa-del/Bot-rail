@@ -2,11 +2,11 @@ import os
 import discord
 from discord.ext import commands
 from discord import app_commands
-import asyncio
-import random
-import re
 import datetime
 
+# =========================
+# TOKEN
+# =========================
 TOKEN = os.environ["DISCORD_TOKEN"]
 
 # =========================
@@ -15,19 +15,13 @@ TOKEN = os.environ["DISCORD_TOKEN"]
 LOG_CHANNEL_ID = 1506671577931055255
 CALL_STAFF_ROLE = 1507089576462778499
 
+# ⚠️ CORRIGIDO: agora é ID normal
+CARGOS_PERMITIDOS = [
+    1415032549649944586
+]
+
 WL_ROLE_ID = 1506446576267038821
 WL_REMOVE_ROLE_ID = 1506446577261084733
-
-CARGOS_PERMITIDOS = [
-    1506446522714161275,
-    1506446521607131198,
-    1506446520692637717,
-    1506446519677489272,
-    1506446518482243656,
-    1506446517614018730,
-    1506446511960101007,
-    1506446510798274661
-]
 
 WHITELIST_QUESTIONS = [
     "Qual nome do seu personagem?",
@@ -41,21 +35,20 @@ user_ids = {}
 ticket_counter = 0
 
 # =========================
-# HORÁRIO
+# HORÁRIO PERMITIDO
 # =========================
-
 def horario_ok():
     agora = datetime.datetime.utcnow() - datetime.timedelta(hours=3)
     return 11 <= agora.hour < 23
 
 # =========================
-# STAFF CHECK
+# STAFF CHECK (corrigido)
 # =========================
 def staff(interaction: discord.Interaction):
-    return any(r.id in CARGOS_PERMITIDOS for r in interaction.user.roles)
+    return any(role.id in CARGOS_PERMITIDOS for role in interaction.user.roles)
 
 # =========================
-# BOT
+# BOT SETUP
 # =========================
 intents = discord.Intents.default()
 intents.members = True
@@ -71,18 +64,14 @@ async def on_ready():
     print(f"Logado como {bot.user}")
 
 # =========================
-# ANÚNCIO
+# /ANUNCIO
 # =========================
 @bot.tree.command(name="anuncio")
 @app_commands.describe(
     titulo="Título do anúncio",
     mensagem="Mensagem do anúncio"
 )
-async def anuncio(
-    interaction: discord.Interaction,
-    titulo: str,
-    mensagem: str
-):
+async def anuncio(interaction: discord.Interaction, titulo: str, mensagem: str):
 
     if not horario_ok():
         return await interaction.response.send_message(
@@ -104,8 +93,6 @@ async def anuncio(
             ephemeral=True
         )
 
-    await interaction.response.defer(ephemeral=True)
-
     embed = discord.Embed(
         title=titulo,
         description=mensagem,
@@ -114,16 +101,48 @@ async def anuncio(
 
     await interaction.channel.send(embed=embed)
 
-    await interaction.followup.send(
+    await interaction.response.send_message(
         embed=discord.Embed(
-            title="✅ ANÚNCIO ENVIADO",
-            description="O anúncio foi enviado com sucesso.",
+            title="✅ SUCESSO",
+            description="Anúncio enviado com sucesso.",
             color=discord.Color.green()
         ),
         ephemeral=True
     )
 
 # =========================
-# RUN
+# /POSICAO
+# =========================
+@bot.tree.command(name="posicao")
+@app_commands.describe(
+    nick="Nick do Roblox",
+    posicao="Posição do jogador",
+    numero="Número do jogador"
+)
+async def posicao(interaction: discord.Interaction, nick: str, posicao: str, numero: int):
+
+    if not nick.strip():
+        return await interaction.response.send_message("Nick inválido.", ephemeral=True)
+
+    if not posicao.strip():
+        return await interaction.response.send_message("Posição inválida.", ephemeral=True)
+
+    if numero <= 0:
+        return await interaction.response.send_message("Número inválido.", ephemeral=True)
+
+    embed = discord.Embed(
+        title="📌 REGISTRO DE POSIÇÃO",
+        color=discord.Color.blue()
+    )
+
+    embed.add_field(name="👤 Discord", value=interaction.user.mention, inline=False)
+    embed.add_field(name="🎮 Nick Roblox", value=nick, inline=True)
+    embed.add_field(name="📍 Posição", value=posicao, inline=True)
+    embed.add_field(name="🔢 Número", value=str(numero), inline=True)
+
+    await interaction.response.send_message(embed=embed)
+
+# =========================
+# START BOT
 # =========================
 bot.run(TOKEN)
